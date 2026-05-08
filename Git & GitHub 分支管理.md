@@ -1,4 +1,32 @@
-# Git & GitHub 管理
+# Git & GitHub 
+## 常用建立仓库流程
+```bash
+#1. 在github上建立仓库，并复制SSH地址
+
+#2. 在需上传的文件夹处打开终端
+
+#3. 初始化
+git init
+
+#4. 与github仓库建立联系
+git remote add origin +SSH地址
+
+#5.新建本地main仓库,对应github上面的main分支
+git branch main 
+
+#6.切换到main分支（原来是master分支）
+git switch main
+
+#7.将文件加入缓冲区
+git add .
+
+#8.提交文件
+git commit -m"...."
+
+#9.上传值github（初次提交使用 
+git push origin main 
+```
+
 ## 一、常用 Git 命令
 ```bash
 运行
