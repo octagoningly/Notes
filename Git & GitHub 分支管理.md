@@ -24,7 +24,7 @@ git add .
 git commit -m"...."
 
 #9.上传值github（初次提交使用 
-git push origin main 
+git push -u origin main
 ```
 
 ## 一、常用 Git 命令
