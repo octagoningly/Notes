@@ -1,6 +1,7 @@
 ### 写在开头
 github 上面搜来搜去没找到合适的 ，要么使太吃技术，要么使太吃经济；  
 因此做了这个简洁的教程 ， 如果帮到你的话 ， 记得点个星星噢
+@author：zuige66、octangoningly
 ### 一、 下载 ` clash verge `作为代理
 * #### 官网地址 https://www.clashvergel.com.cn/
 * #### 官网上不去，可以去`github`找
