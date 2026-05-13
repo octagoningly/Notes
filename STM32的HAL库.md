@@ -246,6 +246,7 @@ for(int i = 0; i<100;i++)
 
 * **工作原理**
     * 旋转时，两个输出引脚 A、B 分别输出两个方波
+      * 转一周生成20个方波信号
     * **顺时针转时**：A 方波落后 B 方波 90°
         * 例如：顺时针旋转时，读取 A 上升沿，B 为低电平
     * **逆时针转时**：A 方波超前 B 方波 90°
@@ -265,11 +266,13 @@ for(int i = 0; i<100;i++)
     * PA9、PA10 为 A、B 通道
     * `Encoder Mode` 选择其中一个通道进行计数
     * **设置预分频值**：`2-1`，使旋转一次计数 +1
+      * 不分频，转一周计数40次
+      * 分频后，转一周计数20次
     * 设置极性可以使正转和反转的计数方向不同（增、减）
 
 ## 3.代码示例
 ```c
-// 开启编码器计数
+// 开启编码器计数 ，开启全部通道
  HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
  // 读取编码器计数值
  count = __HAL_TIM_GET_COUNTER(&htim1);
@@ -283,4 +286,41 @@ for(int i = 0; i<100;i++)
       __HAL_TIM_SET_COUNTER(&htim1,100);
     }
 ```  
+# 五、舵机控制
+## 1. 舵机原理
+* **工作原理**
+    * 改变输入到舵机的`PWM占空比`来控制角度
+    * 占空比在`2.5%~15.5%`之间对应角度`0°~180°`
+* **引脚**
+    * 橙色线为控制引脚，接PWM输出引脚
+    * 红色为正极5V (要接`5V的STlink电源才能带动`)
+##  2.MX 配置 （配合旋转编码器）
+* **打开 TIM1**（编码器）
+  * 设置为`Encoder Mode`模式
+* **打开 TIM4**（PWM）
+  * 设置通道三为PWM模式
+  * 预分频值设置为720-1
+  * 自动重装载值设置为2000-1
+  * 正好`PWM频率为50HZ`--`舵机控制所需要的频率`
+## 3.代码示例
+```c
+//开启TIM1 编码器计数，开启TIM4 PWM模式
+HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
+HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_3);
+
+//控制编码器计数值的范围 0~20
+#define COUNT_MAX 20
+if (count > 6000){
+      count = 0;
+      __HAL_TIM_SET_COUNTER(&htim1,0);
+    }
+else if (count > COUNT_MAX){
+     count =COUNT_MAX ;
+     __HAL_TIM_SET_COUNTER(&htim1,COUNT_MAX);
+    }
+
+//根据编码器计数值，配置比较寄存器值，调节PWM占空比，调节舵机角度
+duty =(10* count /(float)COUNT_MAX+2.5)/100.0*2000;
+__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,duty);
+```
 
