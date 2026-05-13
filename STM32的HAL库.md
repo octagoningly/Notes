@@ -80,11 +80,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //读取计数寄存器
 counter=__HAL_TIM_GET_COUNTER(&htim2);
 ```
-## 外部时钟
+## 外部时钟--ETR
 * 芯片主频保持8MHz，或者调节预分频器降低TIM的内部时钟频率
   * 内部时钟会影响滤波器的作用，内部时钟8MHz最好
 * 选择有外部时钟ETR的定时器，将`时钟源设置为ETR`
-* 将`Clock Fliter`(滤波器)的值设为 1~15
+* 将**Clock Fliter**(滤波器)的值设为 1~15
 * 计数寄存器会随着`上升沿`的到来计数
 * 配合灰度传感器的DO引脚输出的波形，实现计数
 
@@ -93,7 +93,7 @@ counter=__HAL_TIM_GET_COUNTER(&htim2);
   * 开启定时器后（内部时钟源），将从模式设置为`Reset Mode`
   * 将`Trigger Source`设置为TI1FP1（检测PA0引脚的上升沿）
   * 将PA0引脚设为`下拉`，避免浮空输入
-  * 将`Clock Fliter`(滤波器)的值设为 1~15
+  * 将**Clock Fliter**(滤波器)的值设为 1~15
 * #### 在引脚接检测到上升沿信号后，`计数值置零`、`触发定时器更新中断`、`触发器中断标志位置1`
 * #### 触发器中断标志位用函数`__HAL_TIM_GET_FLAG(htim,TIM_FLAG_TRIGGER)`查看
 ```c
@@ -213,4 +213,50 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 * #### 下方参数设置
   * PWM模式
   * **设置比较寄存器的值（Pulse）**
+    * 有时候PWM输出引脚的小灯闪烁，可以通过赋一个较高的初始值解决
   * 高速模式、极性选择
+
+# 四、编码器
+
+## 1. 增量型编码器
+
+* **工作原理**
+    * 旋转时，两个输出引脚 A、B 分别输出两个方波。
+    * **顺时针转时**：A 方波落后 B 方波 90°。
+        * 例如：顺时针旋转时，读取 A 上升沿，B 为低电平。
+    * **逆时针转时**：A 方波超前 B 方波 90°。
+        * 例如：逆时针旋转时，读取 A 下降沿，B 为高电平。
+* **方向判断**
+    * 读取 A、B 方波的电平状态，即可判断旋转方向。
+    * 可以通过 `GPIO_ReadPin()` 函数读取 A、B 的电平状态。
+    * **推荐接法**：将 A、B 分别接入 TI1FP、TI2FP 通道（最终接入编码器）。
+        * TI1FP、TI2FP 通道自带滤波器。
+        * 计数 A 通道的上升沿和下降沿（旋转一次计数 +2）。
+
+## 2.MX 配置
+
+* **打开 TIM1**
+    * 不需选择内部时钟源。
+    * 设置 `Combined Channel` 为 **Encoder Mode**。
+    * PA9、PA10 为 A、B 通道。
+    * `Encoder Mode` 选择其中一个通道进行计数。
+    * **设置预分频值**：`2-1`，使旋转一次计数 +1。
+    * 设置极性可以使正转和反转的计数方向不同（增、减）。
+
+## 3.代码示例
+```c
+// 开启编码器计数
+ HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
+ // 读取编码器计数值
+ count = __HAL_TIM_GET_COUNTER(&htim1);
+ //控制计数值在0~100之间
+ if(count >6000){
+      count = 0;
+      __HAL_TIM_SET_COUNTER(&htim1,0);
+    }
+ else if (count >100){
+      count = 100;
+      __HAL_TIM_SET_COUNTER(&htim1,100);
+    }
+```  
+
