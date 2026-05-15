@@ -79,3 +79,16 @@ npm install -g @anthropic-ai/claude-code
 }
 
 
+opencode
+1.命令行安装 npm i -g opencode-ai
+2.客户端官网安装
+3.vscode中安装插件
+* Ctrl+Shift+P 打开命令：open opencode 即可打开
+* /connect
+* /new 开启新会话
+* /sessions 切换对话
+* /share 分享对话到网址
+* /unshared
+* /export 导出对话
+* /timeline  revert回退时间
+

@@ -155,3 +155,83 @@ git config --global user.name "你的名字"
 git config --global user.email "你的邮箱"
 ```
 
+没问题，我把整份 Markdown 文件 **全部内容都放在一个代码块里**，方便你直接复制保存：
+
+
+##  七、 GitHub Fork 
+这是一份完整的开源项目贡献工作流，适用于 fork 后长期跟踪原仓库更新并提交 PR 的情况。
+### 1️、Fork 仓库
+在 GitHub 原仓库页面点击 **Fork**，将项目复制到你的账户下。
+### 2️、Clone 到本地
+```bash
+git clone +SSH地址
+```
+### 3️、添加原仓库为 upstream
+
+```bash
+git remote add upstream +原项目SSH地址
+git remote -v # 查看所有远程仓库
+```
+输出示例：
+```
+origin   git@github.com:octagoningly/awesome-claude-skills.git (fetch)
+origin   git@github.com:octagoningly/awesome-claude-skills.git (push)
+upstream git@github.com:ComposioHQ/awesome-claude-skills.git (fetch)
+upstream git@github.com:ComposioHQ/awesome-claude-skills.git (push)
+```
+### 4️、同步原作者更新
+每次开发前，先同步主分支：
+```bash
+git fetch upstream #拉取原作者最新状态
+git checkout master #切到本地主分支
+git rebase upstream/master   # 把本地修改放在最新原作者版本后面
+git push origin master --force #更新你 fork 的远程仓库
+```
+### 5️、创建功能分支
+不要在 master 上直接开发，创建新分支：
+```bash
+git checkout -b feature-xxx
+```
+示例：
+```bash
+git checkout -b add-new-skill
+```
+### 6️、开发与提交
+开发完成后：
+```bash
+git add .
+git commit -m "Add new skill example"
+```
+### 7️、推送功能分支到 fork
+```bash
+git push origin feature-xxx
+```
+### 8️、发 Pull Request (PR)
+
+1. 打开你的 fork 页面
+2. 点击 “Compare & pull request”
+3. 将你的功能分支提交到 **原作者仓库的 main**
+4. 填写 PR 描述并提交
+
+### 9️、PR 合并后清理
+
+```bash
+git checkout main
+git fetch upstream
+git rebase upstream/main
+git push origin main --force
+
+git branch -d feature-xxx
+git push origin --delete feature-xxx
+```
+## 🔹 日常小提示
+* 每次开发前同步 upstream，避免冲突
+* main 保持干净，只在功能分支开发
+* 只想跟踪更新可只执行 fetch + rebase
+* 提交功能前 commit 信息尽量简洁清晰
+    
+## 🔹 总结流程图
+```
+Fork → Clone → Add Upstream → Fetch/Rebase → Feature Branch → Code → Commit → Push → Pull Request → Merge → Clean Branch
+```
+

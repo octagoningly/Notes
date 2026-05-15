@@ -323,4 +323,145 @@ else if (count > COUNT_MAX){
 duty =(10* count /(float)COUNT_MAX+2.5)/100.0*2000;
 __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,duty);
 ```
+# 六、电机驱动
+## 1. 电机原理
+* 电机需要较高的电压和电流，而且本身具有电感，可能会影响单片机工作
+* 电机一般用电机驱动芯片驱动
+* 如TB6612电机驱动芯片
+## 2.TB6612芯片
+  * PWM引脚：接单片机PWM输出--控制电机转速
+  * AIN1、2引脚：接单片机GPIO口--控制电机正反转和滑行、刹停
+      * AIN1	AIN2	电机状态
 
+| PWMA   | AIN1   | AIN2   | 状态             |
+| ------ | ------ | ------ | -------------- |
+| H（高电平） | H（高电平） | H（高电平） | **短路刹车（快速制动）** |
+| H（高电平） | L（低电平） | L（低电平） | **停止（滑行）**     |
+| H（高电平） | H（高电平） | L（低电平） | **正转（顺时针）**    |
+| H（高电平） | L（低电平） | H（高电平） | **反转（逆时针）**    |
+| L（低电平） | X（任意）  | X（任意）  | **停止（滑行）**     |
+
+
+  * AO1、2引脚：接电机引脚--真正控制电机
+  * VCC引脚：接单片机高电平
+  * GND引脚：接地
+  * STBY引脚：拉高电平使能才能驱动电机
+  * VM引脚：接外部电压（如：STLink的5V）
+
+## 3.tb6612驱动库
+```c
+/**
+ * @file tb6612.c
+ * @brief TB6612FNG 双 H 桥电机驱动器控制实现
+ */
+
+#include "tb6612.h"
+#include "tim.h"
+#include "gpio.h"  // HAL_GPIO_WritePin
+
+/** @brief 最大速度值，对应 TIM1 的 ARR */
+#define MAX_SPEED 100
+
+/** @brief PWM 使用的定时器和通道 */
+#define TB6612_PWM_TIM &htim2
+#define TB6612_PWM_CH  TIM_CHANNEL_1
+
+/** @brief AIN1/AIN2 方向控制引脚 */
+#define TB6612_AIN1_GPIO GPIOB
+#define TB6612_AIN1_PIN  GPIO_PIN_13
+#define TB6612_AIN2_GPIO GPIOB
+#define TB6612_AIN2_PIN  GPIO_PIN_14
+
+/**
+ * @brief 初始化 TB6612FNG
+ *        - 拉高 nSTBY（可在硬件上接高）
+ *        - 启动 PWM 输出
+ */
+void TB6612_Init(void)
+{
+    // 启动 PWM
+    HAL_TIM_PWM_Start(TB6612_PWM_TIM, TB6612_PWM_CH);
+
+    // 初始方向设为停止（AIN1=0, AIN2=0）
+    HAL_GPIO_WritePin(TB6612_AIN1_GPIO, TB6612_AIN1_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(TB6612_AIN2_GPIO, TB6612_AIN2_PIN, GPIO_PIN_RESET);
+
+    // PWM 初始占空比 0
+    __HAL_TIM_SET_COMPARE(TB6612_PWM_TIM, TB6612_PWM_CH, 0);
+}
+
+/**
+ * @brief 设置电机正转
+ * @param speed 速度值 0~MAX_SPEED
+ */
+void TB6612_Forward(uint8_t speed)
+{
+    if(speed > MAX_SPEED) speed = MAX_SPEED;
+
+    // 设置方向：AIN1=1, AIN2=0
+    HAL_GPIO_WritePin(TB6612_AIN1_GPIO, TB6612_AIN1_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(TB6612_AIN2_GPIO, TB6612_AIN2_PIN, GPIO_PIN_RESET);
+
+    // 设置 PWM 占空比
+    __HAL_TIM_SET_COMPARE(TB6612_PWM_TIM, TB6612_PWM_CH, speed);
+}
+
+/**
+ * @brief 设置电机反转
+ * @param speed 速度值 0~MAX_SPEED
+ */
+void TB6612_Backward(uint8_t speed)
+{
+    if(speed > MAX_SPEED) speed = MAX_SPEED;
+
+    // 设置方向：AIN1=0, AIN2=1
+    HAL_GPIO_WritePin(TB6612_AIN1_GPIO, TB6612_AIN1_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(TB6612_AIN2_GPIO, TB6612_AIN2_PIN, GPIO_PIN_SET);
+
+    // 设置 PWM 占空比
+    __HAL_TIM_SET_COMPARE(TB6612_PWM_TIM, TB6612_PWM_CH, speed);
+}
+
+/**
+ * @brief 刹车（快速停电机）
+ */
+void TB6612_Brake(void)
+{
+    // AIN1=1, AIN2=1
+    HAL_GPIO_WritePin(TB6612_AIN1_GPIO, TB6612_AIN1_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(TB6612_AIN2_GPIO, TB6612_AIN2_PIN, GPIO_PIN_SET);
+
+    // PWM 全占空比也可以保持刹车状态
+    __HAL_TIM_SET_COMPARE(TB6612_PWM_TIM, TB6612_PWM_CH, MAX_SPEED);
+}
+
+/**
+ * @brief 滑行（电机自由旋转）
+ */
+void TB6612_Coast(void)
+{
+    // AIN1=0, AIN2=0
+    HAL_GPIO_WritePin(TB6612_AIN1_GPIO, TB6612_AIN1_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(TB6612_AIN2_GPIO, TB6612_AIN2_PIN, GPIO_PIN_RESET);
+
+    // PWM 输出为 0
+    __HAL_TIM_SET_COMPARE(TB6612_PWM_TIM, TB6612_PWM_CH, 0);
+}
+```
+## 4.MX 配置
+* 添加tb6612.c.h文件
+* 开启定时器PWM输出通道，并在.c文件中修改定时器宏定义
+* 将两个GPIO口设置为推挽输出
+
+## 5.代码示例
+```c
+    TB6612_Init();           // 初始化
+    TB6612_Forward(50);      // 正转 50% 占空比
+    HAL_Delay(1000);
+	TB6612_Backward(75);     // 反转 75% 占空比
+	HAL_Delay(1000);
+	TB6612_Brake();          // 刹车
+	HAL_Delay(500);
+	TB6612_Coast();          // 滑行
+	HAL_Delay(20);
+```
