@@ -465,3 +465,23 @@ void TB6612_Coast(void)
 	TB6612_Coast();          // 滑行
 	HAL_Delay(20);
 ```
+# 七、ADC
+## 1.ADC
+* 12位数据，1~4095 对应 0~3.3V
+* 采样电压值=采样12位数据/4095*3.3V
+## 2. MX 配置
+* 在ADC1中添加一个IN通道
+* 设置持续转换模式：将continuous conversion mode 设置为enabled
+* 将ADC的时钟频率设置为12MHz(最大不超14MHz)
+
+## 3. 代码示例
+```c
+//矫正ADC值
+HAL_ADCEx_Calibration_Start(&hadc1);
+//开启ADC1,并等待数据转换完成
+HAL_ADC_Start(&hadc1);
+HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+//读取ADC值，并计算出电压值
+value = HAL_ADC_GetValue(&hadc1);
+voltage = (value/4095.0)*3.3;
+```
